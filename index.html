@@ -100,7 +100,10 @@
   .manual { color:var(--ambar); font-weight:600; }
   .bProg { border:1px solid var(--verde); background:#fff; color:var(--verde); border-radius:8px; padding:9px 10px; font-weight:700; cursor:pointer; white-space:nowrap; }
   .bProg:disabled { opacity:.45; cursor:default; }
-  .acc { display:flex; gap:6px; align-items:center; }
+  .acc { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .bNA { border:1px solid var(--rojo); background:#fff; color:var(--rojo); border-radius:8px; padding:9px 10px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .noasis { color:var(--rojo); font-weight:700; text-align:right; }
+  .noasis small { display:block; color:var(--gris); font-weight:400; }
   .bLote { width:100%; border:0; background:var(--verde); color:#fff; border-radius:10px; padding:12px; font-weight:700; margin:8px 0; cursor:pointer; }
   .okmsg { background:var(--verde2); color:var(--verde); border-radius:10px; padding:10px; font-weight:600; margin:8px 0; }
   .hidden { display:none; }
@@ -112,7 +115,7 @@
   <p id="sub">Antioquia Trópical Club</p>
 </header>
 <main>
-
+ 
 <!-- ═════════ PERSONAL ═════════ -->
 <section id="vPersonal" class="hidden">
   <div id="vLista">
@@ -124,7 +127,7 @@
   </div>
   <div id="tar"></div>
 </section>
-
+ 
 <!-- ═════════ ADMIN ═════════ -->
 <section id="vAdmin" class="hidden">
   <div id="login" class="card">
@@ -150,7 +153,7 @@
     </div>
   </div>
 </section>
-
+ 
 <!-- ═════════ LÍDERES ═════════ -->
 <section id="vLider" class="hidden">
   <div id="loginL" class="card">
@@ -163,11 +166,21 @@
   </div>
   <div id="panLider" class="hidden"></div>
 </section>
-
+ 
+<section id="vPort" class="hidden">
+  <div id="loginP" class="card">
+    <label class="muted" for="claveP">Clave de portería</label>
+    <input id="claveP" type="password" autocomplete="current-password">
+    <div style="margin-top:10px"><button class="btn sec" id="entrarP">Entrar</button></div>
+    <p id="loginErrP" class="muted"></p>
+  </div>
+  <div id="panPort" class="hidden"></div>
+</section>
+ 
 </main>
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbxxIKv5_wuNnR2BymOE_v9LchS4NtAndwXOb1_6TYBLpNfqJ4_PeJs-FjsGgbtKXhJL/exec';
-const VISTA = (v => v === 'admin' || v === 'lider' ? v : 'personal')(new URLSearchParams(location.search).get('vista'));
+const VISTA = (v => v === 'admin' || v === 'lider' || v === 'porteria' ? v : 'personal')(new URLSearchParams(location.search).get('vista'));
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const run = async (fn, ...args) => {
@@ -181,7 +194,7 @@ const run = async (fn, ...args) => {
 };
 const cap = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
 const mmss = ms => { ms = Math.max(0, ms); const m = Math.floor(ms/60000), s = Math.floor(ms%60000/1000); return m + ':' + String(s).padStart(2,'0'); };
-
+ 
 /* ───── Personal ───── */
 let tReloj = null, offset = 0, datos = null;
 const norm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
@@ -281,7 +294,7 @@ async function responder(t, r) {
   try { pintar(await run('responder', t.id, r)); }
   catch (e) { alert(e.message); $('bOk').disabled = $('bNo').disabled = false; }
 }
-
+ 
 /* ───── Admin ───── */
 let clave = '', fechaSel = '', tAuto = null, tCuenta = null;
 const CLS = { 'Confirmó':'ok', 'No puede':'no', 'Pendiente':'pend', 'No confirmó':'venc', 'No aplica – vinculado':'na', 'Reemplazado':'reemp' };
@@ -317,14 +330,16 @@ function pintarSalidas(d) {
   const grupos = {}, orden = [];
   lista.forEach(p => { const g = p.punto === p.area ? p.area : p.area + ' · ' + p.punto; if (!grupos[g]) { grupos[g] = []; orden.push(g); } grupos[g].push(p); });
   h += orden.map(g => `<div class="lgrupo"><h3>${esc(g)}</h3>` + grupos[g].map(p => {
-    const der = p.salida
+    const der = p.salida === 'No asistió'
+      ? `<div class="noasis">No asistió<small>${esc(p.corregido ? 'corrigió ' + p.corregido : p.reporto)}</small>${d.puedeCorregir ? `<button class="bCor" data-id="${esc(p.id)}" data-n="${esc(p.persona)}" data-h="">Corregir</button>` : ''}</div>`
+      : p.salida
       ? `<div class="salio">Salió ${esc(p.salida)}<small>${esc(p.corregido ? 'corrigió ' + p.corregido : p.reporto)}${p.manual ? ' · <span class="manual">hora a mano</span>' : ''}${p.confProg ? ' · programada' : ''}</small>${d.puedeCorregir ? `<button class="bCor" data-id="${esc(p.id)}" data-n="${esc(p.persona)}" data-h="${esc(p.salida)}">Corregir</button>` : ''}</div>`
-      : `<div class="acc">${p.prog ? `<button class="bProg" data-id="${esc(p.id)}" data-n="${esc(p.persona)}" data-h="${esc(p.prog)}" ${p.progYa ? '' : 'disabled title="Aún no llega la hora programada"'}>✓ ${esc(p.prog)}</button>` : ''}<button class="bRep" data-id="${esc(p.id)}" data-n="${esc(p.persona)}">Reportar</button></div>`;
+      : `<div class="acc">${p.prog ? `<button class="bProg" data-id="${esc(p.id)}" data-n="${esc(p.persona)}" data-h="${esc(p.prog)}" ${p.progYa ? '' : 'disabled title="Aún no llega la hora programada"'}>✓ ${esc(p.prog)}</button>` : ''}<button class="bRep" data-id="${esc(p.id)}" data-n="${esc(p.persona)}">Reportar</button><button class="bNA" data-id="${esc(p.id)}" data-n="${esc(p.persona)}">No asistió</button></div>`;
     const txtProg = p.prog ? ' · Salida programada ' + p.prog : ' · Sin salida programada';
     return `<div class="sal" data-row="${esc(p.id)}"><div><div class="n">${esc(p.persona)}</div><div class="o">Entrada ${esc(p.hora)}${esc(txtProg)} · ${esc(p.estado === 'No aplica – vinculado' ? 'Vinculado' : p.estado)}</div></div>${der}</div>`;
   }).join('') + '</div>').join('');
   if (d.fecha && !total) h += '<p class="muted">No hay personas programadas en esta área este día.</p>';
-  h += '<p class="muted" style="margin-top:14px">Horas en militar con cuartos (18.25 = 6:15 p. m.), al cuarto más cercano. ★ = tu área. Puedes reportar la salida de cualquier área para apoyar a otro líder. «Reportar»: elige «Ahora» o escribe la hora real si reportas tarde. Solo se reporta una vez' +
+  h += '<p class="muted" style="margin-top:14px">Horas en militar con cuartos (18.25 = 6:15 p. m.), al cuarto más cercano. ★ = tu área. Puedes reportar la salida de cualquier área para apoyar a otro líder. «Reportar»: elige «Ahora» o escribe la hora real si reportas tarde. «No asistió»: si la persona no vino. Solo se reporta una vez' +
     (d.puedeCorregir ? '; «Corregir» cambia una salida ya reportada.</p>' : '; si te equivocas, avisa a Dirección.</p>');
   panelSal.innerHTML = h;
   panelSal.querySelectorAll('.dias button').forEach(b => b.onclick = () => cargarSalidas(b.dataset.k));
@@ -339,6 +354,11 @@ function pintarSalidas(d) {
     if (!confirm('Se confirma la salida programada de ' + ids.length + ' persona(s) que ya cumplieron su horario.\n\nRevisa antes la lista: a quien haya salido a otra hora repórtalo con «Reportar».\n\n¿Confirmar?')) return;
     b.disabled = true;
     try { pintarSalidas(await run('confirmarProgramadas', credSal, ids)); } catch (e) { alert(e.message); b.disabled = false; }
+  });
+  panelSal.querySelectorAll('.bNA').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Confirmas que ' + b.dataset.n + ' NO asistió?\n\nQueda registrado y solo Dirección lo puede corregir.')) return;
+    b.disabled = true;
+    try { pintarSalidas(await run('reportarSalida', credSal, b.dataset.id, 'NOASISTIO')); } catch (e) { alert(e.message); b.disabled = false; }
   });
   panelSal.querySelectorAll('.bRep').forEach(b => b.onclick = () => {
     const fila = panelSal.querySelector('.sal[data-row="' + b.dataset.id + '"]');
@@ -374,8 +394,40 @@ function pintarSalidas(d) {
     try { pintarSalidas(await run('reportarSalida', credSal, b.dataset.id, h2)); } catch (e) { alert(e.message); }
   });
 }
-
+ 
 /* ───── Líderes ───── */
+let claveP = '', fechaP = '', timerP = null;
+function initPorteria() {
+  $('vPort').classList.remove('hidden');
+  $('sub').textContent = 'Portería · salidas reportadas';
+  try { claveP = sessionStorage.getItem('atcPort') || ''; } catch (e) {}
+  $('entrarP').onclick = () => { claveP = $('claveP').value; cargarPorteria(); };
+  $('claveP').addEventListener('keydown', e => { if (e.key === 'Enter') $('entrarP').click(); });
+  if (claveP) cargarPorteria();
+}
+async function cargarPorteria() {
+  let d;
+  try { d = await run('porteria', claveP, fechaP); }
+  catch (e) {
+    try { sessionStorage.removeItem('atcPort'); } catch (x) {}
+    $('loginErrP').textContent = e.message; $('loginP').classList.remove('hidden'); $('panPort').classList.add('hidden'); return;
+  }
+  try { sessionStorage.setItem('atcPort', claveP); } catch (e) {}
+  $('loginP').classList.add('hidden'); $('panPort').classList.remove('hidden');
+  fechaP = d.fecha;
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+  let h = '<div class="dias">' + d.fechas.map(f => `<button data-k="${esc(f.k)}" class="${f.k === d.fecha ? 'act' : ''}">${esc(cap(f.t))}</button>`).join('') + '</div>';
+  h += `<h2>Salidas · ${esc(cap(d.fechaTxt))}</h2><p class="muted">${d.reportadas} de ${d.personas.length} con salida${d.noAsistieron ? ' · ' + d.noAsistieron + ' no asistieron' : ''} · actualizado ${esc(d.ahora)}</p>`;
+  h += d.personas.length
+    ? '<div class="card" style="padding:0"><div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:8px 14px;border-bottom:1px solid var(--borde);font-size:13px" class="muted"><span>Persona</span><span>Programada</span><span>Salida</span></div>' +
+      d.personas.map(p => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--borde)"><span>${esc(p.persona)}</span><span class="muted" style="font-size:14px">${esc(p.entrada)}${p.salProg ? ' – ' + esc(p.salProg) : ''}</span><b style="min-width:62px;text-align:right;${p.salida === 'No asistió' ? 'color:var(--rojo);font-size:13px' : ''}">${p.salida ? esc(p.salida) : '<span class="muted">—</span>'}</b></div>`).join('') + '</div>'
+    : '<p class="muted">No hay programación publicada para este día.</p>';
+  h += '<p class="muted" style="margin-top:10px">Solo lectura. Horas en militar con cuartos (18.25 = 6:15 p. m.). «—» = todavía sin salida reportada.</p>';
+  $('panPort').innerHTML = h;
+  $('panPort').querySelectorAll('.dias button').forEach(b => b.onclick = () => { fechaP = b.dataset.k; cargarPorteria(); });
+  clearTimeout(timerP); timerP = setTimeout(cargarPorteria, 60000);
+}
+ 
 async function initLider() {
   $('vLider').classList.remove('hidden');
   $('sub').textContent = 'Reporte de salidas';
@@ -400,7 +452,7 @@ async function initLider() {
   $('claveL').addEventListener('keydown', e => { if (e.key === 'Enter') $('entrarL').click(); });
   if (guardada) entrar(guardada);
 }
-
+ 
 function initAdmin() {
   $('vAdmin').classList.remove('hidden');
   panelSal = $('panSal');
@@ -520,9 +572,10 @@ function enlazarSug_(root) {
     } catch (e) { box.innerHTML = '<div class="sug">' + esc(e.message) + '</div>'; }
   });
 }
-
-
-if (VISTA === 'admin') initAdmin(); else if (VISTA === 'lider') initLider(); else initPersonal();
+ 
+ 
+if (VISTA === 'admin') initAdmin(); else if (VISTA === 'lider') initLider(); else if (VISTA === 'porteria') initPorteria(); else initPersonal();
 </script>
 </body>
 </html>
+ 
